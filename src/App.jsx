@@ -3,6 +3,8 @@ import {
   Archive,
   ArrowLeft,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
   CirclePlay,
   Clapperboard,
   ExternalLink,
@@ -12,13 +14,16 @@ import {
   Maximize2,
   Radio,
   Search,
+  SkipBack,
+  SkipForward,
   SlidersHorizontal,
   Sparkles,
   Star,
   Tv,
   X,
 } from 'lucide-react'
-import { categories, channels, eras, getChannelUrl, getThumb, getUploadsPlaylist } from './channels.js'
+import { categories, channels, eras, getChannelUrl, getThumb, getUploadsUrl } from './channels.js'
+import YouTubePlaylistPlayer from './YouTubePlaylistPlayer.jsx'
 
 function FootballIcon({ size = 24, strokeWidth = 2, ...props }) {
   return (
@@ -124,8 +129,245 @@ function TunerDial({ label, angle = -35, large = false }) {
   )
 }
 
-function TVPlayer({ channel, tuning, theater, onToggleTheater, onFullscreen, onStep, isFavorite, onFavorite }) {
-  const embedUrl = `https://www.youtube-nocookie.com/embed/${channel.videoId}?list=${getUploadsPlaylist(channel)}&rel=0&modestbranding=1&playsinline=1&cc_load_policy=0`
+function ChannelDial({ channel, onTune, onStep }) {
+  const selectedIndex = channels.findIndex((item) => item.id === channel.id)
+  const pointerAngle = -150 + (selectedIndex / (channels.length - 1)) * 300
+
+  const handleDialKey = (event) => {
+    if (event.key === 'ArrowUp' || event.key === 'ArrowRight') {
+      event.preventDefault()
+      onStep(1)
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') {
+      event.preventDefault()
+      onStep(-1)
+    }
+  }
+
+  return (
+    <div className="channel-tuner">
+      <div className="channel-readout" aria-live="polite">
+        <span>CH</span>
+        <strong>{channel.number}</strong>
+      </div>
+      <div className="channel-selector">
+        {channels.map((station, index) => {
+          const angle = -150 + (index / (channels.length - 1)) * 300
+          return (
+            <button
+              key={station.id}
+              className={`dial-number ${station.id === channel.id ? 'active' : ''}`}
+              style={{ '--slot-angle': `${angle}deg`, '--counter-angle': `${-angle}deg` }}
+              onClick={() => onTune(station)}
+              aria-label={`Tune to channel ${station.number}, ${station.name}`}
+            >
+              <span>{station.number}</span>
+            </button>
+          )
+        })}
+        <button
+          className="channel-knob"
+          style={{ '--channel-angle': `${pointerAngle}deg` }}
+          onClick={() => onStep(1)}
+          onKeyDown={handleDialKey}
+          onWheel={(event) => {
+            event.preventDefault()
+            onStep(event.deltaY > 0 ? 1 : -1)
+          }}
+          role="slider"
+          aria-label="Rotary channel dial"
+          aria-valuemin={channels[0].number}
+          aria-valuemax={channels.at(-1).number}
+          aria-valuenow={channel.number}
+          aria-valuetext={`${channel.number}, ${channel.name}`}
+          title="Click, scroll, or use arrow keys to change channels"
+        >
+          <i />
+        </button>
+      </div>
+      <div className="physical-channel-buttons">
+        <button onClick={() => onStep(1)} aria-label="Channel up"><span>CHANNEL UP</span><ChevronUp size={17} /></button>
+        <button onClick={() => onStep(-1)} aria-label="Channel down"><span>CHANNEL DOWN</span><ChevronDown size={17} /></button>
+      </div>
+    </div>
+  )
+}
+
+function VideoLibraryDeck({ channel, videoMeta, onPreviousVideo, onNextVideo, onOpenLibrary, libraryOpen, theater, onToggleTheater, onFullscreen, isFavorite, onFavorite }) {
+  const videoPosition = videoMeta.total
+    ? `VIDEO ${videoMeta.index + 1} OF ${videoMeta.total}`
+    : videoMeta.ready ? 'COMPLETE PLAYLIST' : 'LOADING PLAYLIST'
+
+  return (
+    <div className="video-library-deck">
+      <div className="library-heading"><i /><span>VIDEO LIBRARY</span><i /></div>
+      <div className="library-console">
+        <button className="tape-control" onClick={onPreviousVideo} disabled={!videoMeta.ready} aria-label="Previous video in this channel">
+          <span>PREV VIDEO</span><SkipBack size={20} fill="currentColor" />
+        </button>
+        <div className="cassette-bay">
+          <div className="cassette-label">
+            <span className="tape-type">E-180<br />VHS</span>
+            <strong>{channel.name}</strong>
+            <button className="all-uploads-button" onClick={onOpenLibrary} aria-expanded={libraryOpen}>ALL<br />UPLOADS</button>
+          </div>
+          <div className="video-counter">{videoPosition}</div>
+          <div className="current-video" title={videoMeta.title}>{videoMeta.error || videoMeta.title}</div>
+        </div>
+        <button className="tape-control" onClick={onNextVideo} disabled={!videoMeta.ready} aria-label="Next video in this channel">
+          <span>NEXT VIDEO</span><SkipForward size={20} fill="currentColor" />
+        </button>
+      </div>
+      <div className="deck-utility">
+        <span>CH {channel.number} · {channel.fullName || channel.name} · COMPLETE PUBLIC CATALOG</span>
+        <div className="deck-actions">
+          <a className="youtube-source" href={getUploadsUrl(channel)} target="_blank" rel="noreferrer" aria-label={`Open ${channel.name} uploads playlist on YouTube`}><ExternalLink size={16} /></a>
+          <button className={isFavorite ? 'favorite active' : 'favorite'} onClick={onFavorite} aria-label={`${isFavorite ? 'Remove channel from' : 'Add channel to'} My List`}>
+            <Star size={17} fill={isFavorite ? 'currentColor' : 'none'} />
+          </button>
+          <button onClick={onToggleTheater} aria-label="Toggle theater mode" className={theater ? 'active' : ''}><Maximize2 size={17} /></button>
+          <button onClick={onFullscreen} aria-label="Enter fullscreen"><Expand size={17} /></button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function formatDuration(seconds) {
+  if (!Number.isFinite(seconds)) return 'ARCHIVE'
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainder = Math.floor(seconds % 60)
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
+    : `${minutes}:${String(remainder).padStart(2, '0')}`
+}
+
+function VideoLibraryDrawer({ channel, videos, status, currentVideoId, onPlay, onClose }) {
+  const [filter, setFilter] = useState('')
+  const [visibleCount, setVisibleCount] = useState(60)
+
+  useEffect(() => {
+    setFilter('')
+    setVisibleCount(60)
+  }, [channel.id])
+
+  const filteredVideos = useMemo(() => {
+    const normalized = filter.trim().toLowerCase()
+    if (!normalized) return videos
+    return videos.filter((video) => video.title.toLowerCase().includes(normalized))
+  }, [filter, videos])
+
+  return (
+    <section className="library-drawer" aria-label={`${channel.name} complete video library`}>
+      <div className="library-drawer-header">
+        <div>
+          <h3>{channel.name} COMPLETE LIBRARY</h3>
+          <p>{status === 'loading' ? 'Tuning the archive…' : `${videos.length.toLocaleString()} public videos from the official uploads playlist`}</p>
+        </div>
+        <div className="library-drawer-actions">
+          <a href={getUploadsUrl(channel)} target="_blank" rel="noreferrer">YOUTUBE <ExternalLink size={14} /></a>
+          <button onClick={onClose} aria-label="Close complete video library"><X size={18} /></button>
+        </div>
+      </div>
+      <label className="library-search">
+        <Search size={17} />
+        <input value={filter} onChange={(event) => { setFilter(event.target.value); setVisibleCount(60) }} placeholder={`Search ${channel.name} videos…`} />
+      </label>
+      {status === 'error' ? (
+        <div className="library-message">The local catalog could not be loaded. Use the YouTube link above to browse every upload.</div>
+      ) : (
+        <div className="video-catalog">
+          {filteredVideos.slice(0, visibleCount).map((video, index) => {
+            const originalIndex = videos.findIndex((item) => item.id === video.id)
+            return (
+              <button key={video.id} className={`catalog-video ${currentVideoId === video.id ? 'active' : ''}`} onClick={() => onPlay(video, originalIndex)}>
+                <span className="catalog-index">{String(originalIndex + 1).padStart(3, '0')}</span>
+                <img src={`https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`} alt="" loading="lazy" />
+                <span className="catalog-copy"><strong>{video.title}</strong><small>{channel.name} · CH {channel.number}</small></span>
+                <span className="catalog-duration">{formatDuration(video.duration)}</span>
+                <CirclePlay size={23} fill="currentColor" />
+              </button>
+            )
+          })}
+          {!filteredVideos.length && status !== 'loading' && <div className="library-message">No tapes match that search.</div>}
+        </div>
+      )}
+      {visibleCount < filteredVideos.length && (
+        <button className="load-more-videos" onClick={() => setVisibleCount((count) => count + 60)}>
+          LOAD 60 MORE · {filteredVideos.length - visibleCount} REMAINING
+        </button>
+      )}
+    </section>
+  )
+}
+
+function TVPlayer({ channel, tuning, theater, onToggleTheater, onFullscreen, onStep, onTune, isFavorite, onFavorite }) {
+  const playerApiRef = useRef(null)
+  const [catalog, setCatalog] = useState([])
+  const [catalogStatus, setCatalogStatus] = useState('loading')
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [videoMeta, setVideoMeta] = useState({
+    ready: false,
+    error: '',
+    index: 0,
+    total: 0,
+    title: channel.title,
+    videoId: channel.videoId,
+  })
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setCatalog([])
+    setCatalogStatus('loading')
+    setLibraryOpen(false)
+
+    fetch(`${import.meta.env.BASE_URL}catalog/${channel.id}.json`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Catalog request failed with ${response.status}`)
+        return response.json()
+      })
+      .then((data) => {
+        setCatalog(Array.isArray(data.videos) ? data.videos : [])
+        setCatalogStatus('ready')
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') setCatalogStatus('error')
+      })
+
+    return () => controller.abort()
+  }, [channel.id])
+
+  const currentCatalogIndex = catalog.findIndex((video) => video.id === videoMeta.videoId)
+  const displayMeta = catalog.length ? {
+    ...videoMeta,
+    index: currentCatalogIndex >= 0 ? currentCatalogIndex : videoMeta.index,
+    total: catalog.length,
+    title: currentCatalogIndex >= 0 ? catalog[currentCatalogIndex].title : videoMeta.title,
+  } : videoMeta
+
+  const playCatalogVideo = (video, index) => {
+    playerApiRef.current?.loadVideoById(video.id)
+    setVideoMeta((current) => ({
+      ...current,
+      ready: true,
+      error: '',
+      index,
+      total: catalog.length,
+      title: video.title,
+      videoId: video.id,
+    }))
+  }
+
+  const stepVideo = (direction) => {
+    if (!catalog.length) {
+      direction > 0 ? playerApiRef.current?.nextVideo() : playerApiRef.current?.previousVideo()
+      return
+    }
+    const index = currentCatalogIndex >= 0 ? currentCatalogIndex : 0
+    const nextIndex = (index + direction + catalog.length) % catalog.length
+    playCatalogVideo(catalog[nextIndex], nextIndex)
+  }
 
   return (
     <section className="tv-column" id="watch" aria-label="Now playing">
@@ -134,50 +376,47 @@ function TVPlayer({ channel, tuning, theater, onToggleTheater, onFullscreen, onS
         <div className="tv-cabinet">
           <div className="tv-screen-frame">
             <div className="crt-glass">
-              <iframe
+              <YouTubePlaylistPlayer
                 key={channel.id}
-                src={embedUrl}
-                title={`${channel.name}: ${channel.title}`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
+                channel={channel}
+                playerApiRef={playerApiRef}
+                onMetaChange={setVideoMeta}
               />
               <div className="scanlines" aria-hidden="true" />
               <div className={`tuning-static ${tuning ? 'active' : ''}`} aria-hidden="true" />
             </div>
           </div>
-          <aside className="tv-controls" aria-hidden="true">
-            <div className="control-label">VHF</div>
-            <TunerDial label="CHANNEL" angle={channel.number * 11} large />
-            <div className="control-label lower">UHF</div>
-            <TunerDial label="FINE" angle={channel.number * -7} />
-            <div className="mini-controls">
-              <span><i />BRIGHT</span>
-              <span><i />COLOR</span>
-            </div>
+          <aside className="tv-controls" aria-label="Old-school channel tuner">
+            <div className="control-label">VHF · UHF</div>
+            <ChannelDial channel={channel} onTune={onTune} onStep={onStep} />
+            <TunerDial label="FINE TUNING" angle={channel.number * -7} />
             <div className="speaker-slats">{Array.from({ length: 7 }, (_, index) => <i key={index} />)}</div>
             <div className="cabinet-badge">B2TF<br /><small>SPORTS TV</small></div>
           </aside>
         </div>
-        <div className="console-deck">
-          <div className="now-playing">
-            <span className="live-dot" />
-            <div>
-              <small>NOW PLAYING · CHANNEL {channel.number}</small>
-              <strong>{channel.title}</strong>
-              <span>{channel.name}</span>
-            </div>
-          </div>
-          <div className="deck-actions">
-            <button onClick={() => onStep(-1)} aria-label="Previous channel"><ArrowLeft size={18} /></button>
-            <button onClick={() => onStep(1)} aria-label="Next channel"><ArrowRight size={18} /></button>
-            <button className={isFavorite ? 'favorite active' : 'favorite'} onClick={onFavorite} aria-label={`${isFavorite ? 'Remove channel from' : 'Add channel to'} My List`}>
-              <Star size={18} fill={isFavorite ? 'currentColor' : 'none'} />
-            </button>
-            <button onClick={onToggleTheater} aria-label="Toggle theater mode" className={theater ? 'active' : ''}><Maximize2 size={18} /></button>
-            <button onClick={onFullscreen} aria-label="Enter fullscreen"><Expand size={18} /></button>
-          </div>
-        </div>
+        <VideoLibraryDeck
+          channel={channel}
+          videoMeta={displayMeta}
+          onPreviousVideo={() => stepVideo(-1)}
+          onNextVideo={() => stepVideo(1)}
+          onOpenLibrary={() => setLibraryOpen((open) => !open)}
+          libraryOpen={libraryOpen}
+          theater={theater}
+          onToggleTheater={onToggleTheater}
+          onFullscreen={onFullscreen}
+          isFavorite={isFavorite}
+          onFavorite={onFavorite}
+        />
+        {libraryOpen && (
+          <VideoLibraryDrawer
+            channel={channel}
+            videos={catalog}
+            status={catalogStatus}
+            currentVideoId={videoMeta.videoId}
+            onPlay={playCatalogVideo}
+            onClose={() => setLibraryOpen(false)}
+          />
+        )}
       </div>
     </section>
   )
@@ -280,7 +519,7 @@ function ArchiveRail({ channels: railChannels, selectedId, onSelect, archiveRef 
       <div className="section-heading">
         <div>
           <h2>BACK IN THE DAY</h2>
-          <p>Games, fights, films, and broadcasts waiting on the shelf.</p>
+          <p>Every public upload from every station, queued on its official playlist.</p>
         </div>
         <div className="rail-controls">
           <button onClick={() => scroll(-1)} aria-label="Scroll archive left"><ArrowLeft size={19} /></button>
@@ -292,7 +531,7 @@ function ArchiveRail({ channels: railChannels, selectedId, onSelect, archiveRef 
           <button key={channel.id} className={`poster-card ${selectedId === channel.id ? 'selected' : ''}`} onClick={() => onSelect(channel)}>
             <img src={getThumb(channel)} alt="" loading="lazy" />
             <span className="poster-shade" />
-            <span className="poster-era">{channel.era} ARCHIVE</span>
+            <span className="poster-era">ALL UPLOADS · {channel.era}</span>
             <span className="poster-play"><CirclePlay size={29} fill="currentColor" /></span>
             <span className="poster-copy">
               <strong>{channel.title}</strong>
@@ -401,6 +640,7 @@ export default function App() {
               onToggleTheater={() => setTheater((value) => !value)}
               onFullscreen={enterFullscreen}
               onStep={stepChannel}
+              onTune={selectChannel}
               isFavorite={favorites.includes(selected.id)}
               onFavorite={() => toggleFavorite(selected.id)}
             />

@@ -217,4 +217,5 @@ export const channels = [
 
 export const getChannelUrl = (channel) => `https://www.youtube.com/channel/${channel.channelId}`
 export const getUploadsPlaylist = (channel) => `UU${channel.channelId.slice(2)}`
+export const getUploadsUrl = (channel) => `https://www.youtube.com/playlist?list=${getUploadsPlaylist(channel)}`
 export const getThumb = (channel) => `https://i.ytimg.com/vi/${channel.videoId}/hqdefault.jpg`
