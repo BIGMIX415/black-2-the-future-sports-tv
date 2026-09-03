@@ -133,9 +133,12 @@ main { width: min(1480px, calc(100% - clamp(28px, 4vw, 72px))); margin: 0 auto; 
 .control-label { font: 12px var(--display); letter-spacing: .19em; color: #b2a28d; text-align: center; }
 .control-label.lower { margin-top: 9px; }
 .channel-tuner { display: grid; justify-items: center; gap: 8px; margin-top: 7px; }
-.channel-readout { width: 112px; height: 43px; border: 2px solid #070604; background: #130b05; box-shadow: inset 0 0 0 2px #72583b, inset 0 0 16px #000, 0 0 0 1px #9b7950; display: flex; align-items: center; justify-content: center; gap: 9px; }
+.channel-readout { width: 158px; min-height: 52px; padding: 5px 8px 4px; border: 2px solid #070604; background: #130b05; box-shadow: inset 0 0 0 2px #72583b, inset 0 0 16px #000, 0 0 0 1px #9b7950; display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 0 5px; }
 .channel-readout span { color: var(--orange); font: 13px var(--display); letter-spacing: .12em; }
 .channel-readout strong { color: #f4831d; font: 37px/.8 var(--display); letter-spacing: .08em; text-shadow: 0 0 8px rgba(244,131,29,.42); }
+.channel-readout strong.digital-number { font-size: 27px; letter-spacing: .055em; text-align: right; }
+.channel-readout small { grid-column: 1 / -1; color: #8f6c4d; font: 6px var(--ui); letter-spacing: .14em; text-align: center; }
+.source-bank-label { margin-bottom: -4px; color: #776b5d; font: 7px var(--ui); letter-spacing: .19em; }
 .channel-selector { width: 166px; height: 166px; position: relative; }
 .dial-number { position: absolute; z-index: 2; left: 50%; top: 50%; width: 25px; height: 19px; padding: 0; border: 0; background: transparent; color: #c9b896; font: 14px/1 var(--display); cursor: pointer; transform: translate(-50%, -50%) rotate(var(--slot-angle)) translateY(-70px) rotate(var(--counter-angle)); }
 .dial-number span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 2px; transition: color .15s ease, background .15s ease, box-shadow .15s ease; }
@@ -235,7 +238,7 @@ main { width: min(1480px, calc(100% - clamp(28px, 4vw, 72px))); margin: 0 auto; 
 .era-clear { border: 0; background: none; color: #b4a48e; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
 .era-clear:disabled { color: #51493e; cursor: default; }
 
-.guide-panel { scroll-margin-top: 110px; border: 1px solid #30261c; background: rgba(15,12,9,.92); height: 100%; max-height: 716px; display: grid; grid-template-rows: auto auto minmax(0,1fr) auto; overflow: hidden; box-shadow: 0 22px 40px rgba(0,0,0,.27); }
+.guide-panel { scroll-margin-top: 110px; border: 1px solid #30261c; background: rgba(15,12,9,.92); height: 100%; max-height: 716px; display: grid; grid-template-rows: auto auto auto auto minmax(0,1fr) auto; overflow: hidden; box-shadow: 0 22px 40px rgba(0,0,0,.27); }
 .guide-heading { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px; border-bottom: 1px solid var(--line); }
 .guide-heading h2, .section-heading h2 { margin: 0; font: 31px/.95 var(--display); letter-spacing: .055em; }
 .guide-heading p, .section-heading p { margin: 5px 0 0; color: #766b5d; font-size: 10px; }
@@ -244,12 +247,23 @@ main { width: min(1480px, calc(100% - clamp(28px, 4vw, 72px))); margin: 0 auto; 
 .sport-tabs button { flex: 1; min-width: max-content; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #a29482; padding: 13px 9px 11px; cursor: pointer; font-size: 10px; }
 .sport-tabs button:hover, .sport-tabs button.active { color: var(--cream); }
 .sport-tabs button.active { border-color: var(--orange); color: var(--orange); }
+.digital-guide-band { min-height: 34px; padding: 0 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #302419; background: linear-gradient(90deg, #1c120b, #0d0a07); color: #8f806d; font: 8px var(--ui); letter-spacing: .11em; }
+.digital-guide-band span { display: flex; align-items: center; gap: 7px; }
+.digital-guide-band i { width: 6px; height: 6px; border-radius: 50%; background: #e96820; box-shadow: 0 0 9px #e96820; }
+.digital-guide-band strong { color: #dc7a31; font: 13px var(--display); letter-spacing: .1em; }
+.guide-search { min-height: 43px; padding: 0 12px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 8px; border-bottom: 1px solid #302419; color: #8f806d; background: #0a0806; }
+.guide-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--cream); font-size: 10px; }
+.guide-search input::placeholder { color: #655a4e; }
+.guide-search button { width: 27px; height: 27px; padding: 0; display: grid; place-items: center; border: 1px solid #473523; background: #120d09; color: #9b8870; cursor: pointer; }
+.guide-search button:hover { color: var(--orange); border-color: #84401e; }
 .channel-list { overflow-y: auto; scrollbar-color: #5b351f #100d0a; scrollbar-width: thin; }
-.channel-row { display: grid; grid-template-columns: minmax(0, 1fr) 42px; min-height: 72px; border-bottom: 1px solid var(--line); position: relative; }
+.channel-row { display: grid; grid-template-columns: minmax(0, 1fr) 42px; min-height: 64px; border-bottom: 1px solid var(--line); position: relative; }
 .channel-row.selected { background: linear-gradient(90deg, rgba(157,42,10,.55), rgba(104,31,10,.17)); box-shadow: inset 3px 0 var(--orange); }
 .channel-row.selected::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: var(--orange); }
 .channel-main { border: 0; background: transparent; text-align: left; display: grid; grid-template-columns: 40px 30px minmax(0,1fr) auto; align-items: center; gap: 6px; padding: 0 8px 0 12px; cursor: pointer; }
+.channel-main.digital-channel-main { grid-template-columns: 58px 24px minmax(0,1fr) auto; gap: 5px; padding-left: 9px; }
 .channel-number { font: 24px var(--display); color: #cbbb9f; }
+.channel-number.digital-guide-number { color: #d87a31; font-size: 19px; letter-spacing: .055em; }
 .sport-mark { color: #a67245; display: grid; place-items: center; }
 .channel-copy { min-width: 0; display: grid; gap: 4px; }
 .channel-copy strong { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -257,6 +271,7 @@ main { width: min(1480px, calc(100% - clamp(28px, 4vw, 72px))); margin: 0 auto; 
 .channel-row.selected .channel-copy small { color: var(--orange); }
 .air-time { color: #827768; font-size: 8px; padding-left: 5px; }
 .air-time small { font-size: 6px; }
+.digital-runtime { min-width: 39px; text-align: right; font: 10px var(--display); letter-spacing: .04em; }
 .row-favorite { border: 0; border-left: 1px solid var(--line); background: transparent; cursor: pointer; color: #745438; display: grid; place-items: center; }
 .row-favorite:hover, .row-favorite.active { color: var(--orange); }
 .guide-footer { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #3a2d21; background: #0b0907; }
@@ -266,6 +281,8 @@ main { width: min(1480px, calc(100% - clamp(28px, 4vw, 72px))); margin: 0 auto; 
 .empty-guide { height: 100%; min-height: 250px; display: grid; place-content: center; justify-items: center; text-align: center; gap: 9px; color: #6f6254; }
 .empty-guide strong { color: #b0a18c; font: 20px var(--display); }
 .empty-guide span { font-size: 10px; }
+.guide-load-more { width: 100%; min-height: 46px; border: 0; border-bottom: 1px solid #3d2a1a; background: #191008; color: #c4ad8d; cursor: pointer; font: 11px var(--display); letter-spacing: .09em; }
+.guide-load-more:hover { color: var(--orange); background: #251309; }
 
 .archive-section { scroll-margin-top: 105px; margin-top: 48px; padding-top: 26px; border-top: 1px solid var(--line); }
 .section-heading { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 18px; }
@@ -365,6 +382,7 @@ footer > span { font: 13px var(--display); letter-spacing: .05em; color: #786b5b
   .guide-heading { padding: 17px 15px 13px; }
   .guide-heading h2 { font-size: 28px; }
   .channel-main { grid-template-columns: 36px 27px minmax(0,1fr) auto; padding-left: 10px; }
+  .channel-main.digital-channel-main { grid-template-columns: 54px 22px minmax(0,1fr) auto; padding-left: 8px; }
   .archive-section { margin-top: 32px; }
   .section-heading h2 { font-size: 31px; }
   .section-heading p { max-width: 220px; line-height: 1.4; }
