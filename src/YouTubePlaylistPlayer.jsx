@@ -29,6 +29,7 @@ function loadYouTubeApi() {
 
 export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerApiRef, onMetaChange }) {
   const hostRef = useRef(null)
+  const playFromUploadsPlaylist = initialVideoId === channel.videoId
 
   useEffect(() => {
     let disposed = false
@@ -70,8 +71,10 @@ export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerA
           height: '100%',
           videoId: initialVideoId,
           playerVars: {
-            listType: 'playlist',
-            list: getUploadsPlaylist(channel),
+            ...(playFromUploadsPlaylist ? {
+              listType: 'playlist',
+              list: getUploadsPlaylist(channel),
+            } : {}),
             playsinline: 1,
             rel: 0,
             modestbranding: 1,
@@ -80,7 +83,7 @@ export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerA
           },
           events: {
             onReady: ({ target }) => {
-              target.getIframe()?.setAttribute('title', `${channel.name} complete uploads playlist`)
+              target.getIframe()?.setAttribute('title', `${channel.name} YouTube player`)
               publishMeta(target)
               refreshTimer = window.setTimeout(() => publishMeta(target), 900)
             },
@@ -114,7 +117,7 @@ export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerA
       playerApiRef.current = null
       player?.destroy?.()
     }
-  }, [channel, initialVideoId, onMetaChange, playerApiRef])
+  }, [channel, initialVideoId, onMetaChange, playerApiRef, playFromUploadsPlaylist])
 
   return <div className="youtube-player"><div ref={hostRef} /></div>
 }
