@@ -213,6 +213,17 @@ export const channels = [
     title: 'Houston Summit at Philadelphia Fever — 1980',
     blurb: 'Original broadcasts, obscure leagues, and beautiful analog tape.',
   },
+  {
+    id: 'mjsiii',
+    number: 40,
+    name: 'MJSIII',
+    sport: 'Football',
+    era: '90s',
+    channelId: 'UCr8HSfSxZ_Sp6v_NCWZUR2Q',
+    videoId: 'xm7KwSIS-As',
+    title: '1983 Cowboys at Vikings',
+    blurb: 'Full vintage NFL broadcasts from one of football’s deepest tape libraries.',
+  },
 ]
 
 export const getChannelUrl = (channel) => `https://www.youtube.com/channel/${channel.channelId}`

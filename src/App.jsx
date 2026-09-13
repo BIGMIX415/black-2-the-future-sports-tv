@@ -307,6 +307,9 @@ function VideoLibraryDrawer({ channel, videos, status, currentVideoId, onPlay, o
 function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuning, theater, onToggleTheater, onFullscreen, onStepSource, onStepDigital, onTune, onVideoChange, isFavorite, onFavorite }) {
   const playerApiRef = useRef(null)
   const handledRequestRef = useRef(null)
+  const requestedVideoId = requestedStation?.sourceId === channel.id
+    ? requestedStation.videoId
+    : channel.videoId
   const [catalog, setCatalog] = useState([])
   const [catalogStatus, setCatalogStatus] = useState('loading')
   const [libraryOpen, setLibraryOpen] = useState(false)
@@ -369,13 +372,13 @@ function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuni
   }, [channel.id, videoMeta.videoId, onVideoChange])
 
   useEffect(() => {
-    if (!requestedStation || requestedStation.sourceId !== channel.id || !catalog.length || !videoMeta.ready) return
+    if (!requestedStation || requestedStation.sourceId !== channel.id || !catalog.length) return
     if (handledRequestRef.current === requestedStation.token) return
     const requestedIndex = catalog.findIndex((video) => video.id === requestedStation.videoId)
     if (requestedIndex < 0) return
     handledRequestRef.current = requestedStation.token
     playCatalogVideo(catalog[requestedIndex], requestedIndex)
-  }, [requestedStation, catalog, channel.id, videoMeta.ready])
+  }, [requestedStation, catalog, channel.id])
 
   const stepVideo = (direction) => {
     if (!catalog.length) {
@@ -395,8 +398,9 @@ function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuni
           <div className="tv-screen-frame">
             <div className="crt-glass">
               <YouTubePlaylistPlayer
-                key={channel.id}
+                key={`${channel.id}:${requestedVideoId}`}
                 channel={channel}
+                initialVideoId={requestedVideoId}
                 playerApiRef={playerApiRef}
                 onMetaChange={setVideoMeta}
               />

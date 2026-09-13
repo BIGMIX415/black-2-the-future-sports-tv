@@ -27,7 +27,7 @@ function loadYouTubeApi() {
   return youtubeApiPromise
 }
 
-export default function YouTubePlaylistPlayer({ channel, playerApiRef, onMetaChange }) {
+export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerApiRef, onMetaChange }) {
   const hostRef = useRef(null)
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function YouTubePlaylistPlayer({ channel, playerApiRef, onMetaCha
         index: Number.isFinite(rawIndex) && rawIndex >= 0 ? rawIndex : 0,
         total: playlist.length,
         title: videoData.title || channel.title,
-        videoId: videoData.video_id || channel.videoId,
+        videoId: videoData.video_id || initialVideoId,
         ...overrides,
       })
     }
@@ -57,7 +57,7 @@ export default function YouTubePlaylistPlayer({ channel, playerApiRef, onMetaCha
       index: 0,
       total: 0,
       title: channel.title,
-      videoId: channel.videoId,
+      videoId: initialVideoId,
     })
 
     loadYouTubeApi()
@@ -68,7 +68,7 @@ export default function YouTubePlaylistPlayer({ channel, playerApiRef, onMetaCha
           host: 'https://www.youtube-nocookie.com',
           width: '100%',
           height: '100%',
-          videoId: channel.videoId,
+          videoId: initialVideoId,
           playerVars: {
             listType: 'playlist',
             list: getUploadsPlaylist(channel),
@@ -114,7 +114,7 @@ export default function YouTubePlaylistPlayer({ channel, playerApiRef, onMetaCha
       playerApiRef.current = null
       player?.destroy?.()
     }
-  }, [channel, onMetaChange, playerApiRef])
+  }, [channel, initialVideoId, onMetaChange, playerApiRef])
 
   return <div className="youtube-player"><div ref={hostRef} /></div>
 }
