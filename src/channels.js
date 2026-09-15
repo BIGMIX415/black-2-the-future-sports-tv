@@ -235,6 +235,17 @@ export const channels = [
     title: '2019 Washington State at Arizona State',
     blurb: 'Full-length college football broadcasts spanning modern classics and vintage Saturdays.',
   },
+  {
+    id: 'virgil-moody',
+    number: 42,
+    name: 'Virgil Moody',
+    sport: 'All Sports',
+    era: '00s',
+    channelId: 'UCnOONRqcf1AuXjyZjMX1TSg',
+    videoId: 'HpxnfjNvX9c',
+    title: '2024 NCAA Hockey Frozen Four Final — Boston College vs Denver',
+    blurb: 'Full NCAA hockey and college-football broadcasts from modern tournaments to vintage classics.',
+  },
 ]
 
 export const getChannelUrl = (channel) => `https://www.youtube.com/channel/${channel.channelId}`
