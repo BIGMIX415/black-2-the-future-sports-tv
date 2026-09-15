@@ -224,6 +224,17 @@ export const channels = [
     title: '1983 Cowboys at Vikings',
     blurb: 'Full vintage NFL broadcasts from one of football’s deepest tape libraries.',
   },
+  {
+    id: 'classic-vintage-sports',
+    number: 41,
+    name: 'Classic Vintage Sports',
+    sport: 'Football',
+    era: '00s',
+    channelId: 'UCq4SpJA9nrfGScqQbJcWL0w',
+    videoId: 'jMK0CeGdsig',
+    title: '2019 Washington State at Arizona State',
+    blurb: 'Full-length college football broadcasts spanning modern classics and vintage Saturdays.',
+  },
 ]
 
 export const getChannelUrl = (channel) => `https://www.youtube.com/channel/${channel.channelId}`

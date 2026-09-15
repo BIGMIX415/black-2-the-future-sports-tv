@@ -8,21 +8,17 @@ import {
   CirclePlay,
   Clapperboard,
   ExternalLink,
-  Expand,
   Heart,
   ListVideo,
-  Maximize2,
   Radio,
   Search,
-  SkipBack,
-  SkipForward,
   SlidersHorizontal,
   Sparkles,
   Star,
   Tv,
   X,
 } from 'lucide-react'
-import { categories, channels, eras, getChannelUrl, getThumb, getUploadsUrl } from './channels.js'
+import { categories, channels, eras, getChannelUrl, getThumb } from './channels.js'
 import YouTubePlaylistPlayer from './YouTubePlaylistPlayer.jsx'
 
 function FootballIcon({ size = 24, strokeWidth = 2, ...props }) {
@@ -195,46 +191,6 @@ function ChannelDial({ channel, digitalNumber, digitalTotal, onTune, onStepSourc
   )
 }
 
-function VideoLibraryDeck({ channel, digitalNumber, videoMeta, onPreviousVideo, onNextVideo, onOpenLibrary, libraryOpen, theater, onToggleTheater, onFullscreen, isFavorite, onFavorite }) {
-  const videoPosition = videoMeta.total
-    ? `VIDEO ${videoMeta.index + 1} OF ${videoMeta.total}`
-    : videoMeta.ready ? 'COMPLETE PLAYLIST' : 'LOADING PLAYLIST'
-
-  return (
-    <div className="video-library-deck">
-      <div className="library-heading"><i /><span>VIDEO LIBRARY</span><i /></div>
-      <div className="library-console">
-        <button className="tape-control" onClick={onPreviousVideo} disabled={!videoMeta.ready} aria-label="Previous video in this channel">
-          <span>PREV VIDEO</span><SkipBack size={20} fill="currentColor" />
-        </button>
-        <div className="cassette-bay">
-          <div className="cassette-label">
-            <span className="tape-type">E-180<br />VHS</span>
-            <strong>{channel.name}</strong>
-            <button className="all-uploads-button" onClick={onOpenLibrary} aria-expanded={libraryOpen}>ALL<br />UPLOADS</button>
-          </div>
-          <div className="video-counter">{videoPosition}</div>
-          <div className="current-video" title={videoMeta.title}>{videoMeta.error || videoMeta.title}</div>
-        </div>
-        <button className="tape-control" onClick={onNextVideo} disabled={!videoMeta.ready} aria-label="Next video in this channel">
-          <span>NEXT VIDEO</span><SkipForward size={20} fill="currentColor" />
-        </button>
-      </div>
-      <div className="deck-utility">
-        <span>DTV {digitalNumber ? String(digitalNumber).padStart(5, '0') : '-----'} · SOURCE {channel.number} · {channel.fullName || channel.name}</span>
-        <div className="deck-actions">
-          <a className="youtube-source" href={getUploadsUrl(channel)} target="_blank" rel="noreferrer" aria-label={`Open ${channel.name} uploads playlist on YouTube`}><ExternalLink size={16} /></a>
-          <button className={isFavorite ? 'favorite active' : 'favorite'} onClick={onFavorite} aria-label={`${isFavorite ? 'Remove channel from' : 'Add channel to'} My List`}>
-            <Star size={17} fill={isFavorite ? 'currentColor' : 'none'} />
-          </button>
-          <button onClick={onToggleTheater} aria-label="Toggle theater mode" className={theater ? 'active' : ''}><Maximize2 size={17} /></button>
-          <button onClick={onFullscreen} aria-label="Enter fullscreen"><Expand size={17} /></button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds)) return 'ARCHIVE'
   const hours = Math.floor(seconds / 3600)
@@ -245,74 +201,11 @@ function formatDuration(seconds) {
     : `${minutes}:${String(remainder).padStart(2, '0')}`
 }
 
-function VideoLibraryDrawer({ channel, videos, status, currentVideoId, onPlay, onClose }) {
-  const [filter, setFilter] = useState('')
-  const [visibleCount, setVisibleCount] = useState(60)
-
-  useEffect(() => {
-    setFilter('')
-    setVisibleCount(60)
-  }, [channel.id])
-
-  const filteredVideos = useMemo(() => {
-    const normalized = filter.trim().toLowerCase()
-    if (!normalized) return videos
-    return videos.filter((video) => video.title.toLowerCase().includes(normalized))
-  }, [filter, videos])
-
-  return (
-    <section className="library-drawer" aria-label={`${channel.name} complete video library`}>
-      <div className="library-drawer-header">
-        <div>
-          <h3>{channel.name} COMPLETE LIBRARY</h3>
-          <p>{status === 'loading' ? 'Tuning the archive…' : `${videos.length.toLocaleString()} public videos from the official uploads playlist`}</p>
-        </div>
-        <div className="library-drawer-actions">
-          <a href={getUploadsUrl(channel)} target="_blank" rel="noreferrer">YOUTUBE <ExternalLink size={14} /></a>
-          <button onClick={onClose} aria-label="Close complete video library"><X size={18} /></button>
-        </div>
-      </div>
-      <label className="library-search">
-        <Search size={17} />
-        <input value={filter} onChange={(event) => { setFilter(event.target.value); setVisibleCount(60) }} placeholder={`Search ${channel.name} videos…`} />
-      </label>
-      {status === 'error' ? (
-        <div className="library-message">The local catalog could not be loaded. Use the YouTube link above to browse every upload.</div>
-      ) : (
-        <div className="video-catalog">
-          {filteredVideos.slice(0, visibleCount).map((video, index) => {
-            const originalIndex = videos.findIndex((item) => item.id === video.id)
-            return (
-              <button key={video.id} className={`catalog-video ${currentVideoId === video.id ? 'active' : ''}`} onClick={() => onPlay(video, originalIndex)}>
-                <span className="catalog-index">{String(originalIndex + 1).padStart(3, '0')}</span>
-                <img src={`https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`} alt="" loading="lazy" />
-                <span className="catalog-copy"><strong>{video.title}</strong><small>{channel.name} · CH {channel.number}</small></span>
-                <span className="catalog-duration">{formatDuration(video.duration)}</span>
-                <CirclePlay size={23} fill="currentColor" />
-              </button>
-            )
-          })}
-          {!filteredVideos.length && status !== 'loading' && <div className="library-message">No tapes match that search.</div>}
-        </div>
-      )}
-      {visibleCount < filteredVideos.length && (
-        <button className="load-more-videos" onClick={() => setVisibleCount((count) => count + 60)}>
-          LOAD 60 MORE · {filteredVideos.length - visibleCount} REMAINING
-        </button>
-      )}
-    </section>
-  )
-}
-
-function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuning, theater, onToggleTheater, onFullscreen, onStepSource, onStepDigital, onTune, onVideoChange, isFavorite, onFavorite }) {
+function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuning, onStepSource, onStepDigital, onTune, onVideoChange }) {
   const playerApiRef = useRef(null)
-  const handledRequestRef = useRef(null)
   const requestedVideoId = requestedStation?.sourceId === channel.id
     ? requestedStation.videoId
     : channel.videoId
-  const [catalog, setCatalog] = useState([])
-  const [catalogStatus, setCatalogStatus] = useState('loading')
-  const [libraryOpen, setLibraryOpen] = useState(false)
   const [videoMeta, setVideoMeta] = useState({
     ready: false,
     error: '',
@@ -323,72 +216,9 @@ function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuni
   })
 
   useEffect(() => {
-    const controller = new AbortController()
-    setCatalog([])
-    setCatalogStatus('loading')
-    setLibraryOpen(false)
-
-    fetch(`${import.meta.env.BASE_URL}catalog/${channel.id}.json`, { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Catalog request failed with ${response.status}`)
-        return response.json()
-      })
-      .then((data) => {
-        setCatalog(Array.isArray(data.videos) ? data.videos : [])
-        setCatalogStatus('ready')
-      })
-      .catch((error) => {
-        if (error.name !== 'AbortError') setCatalogStatus('error')
-      })
-
-    return () => controller.abort()
-  }, [channel.id])
-
-  const currentCatalogIndex = catalog.findIndex((video) => video.id === videoMeta.videoId)
-  const displayMeta = catalog.length ? {
-    ...videoMeta,
-    index: currentCatalogIndex >= 0 ? currentCatalogIndex : videoMeta.index,
-    total: catalog.length,
-    title: currentCatalogIndex >= 0 ? catalog[currentCatalogIndex].title : videoMeta.title,
-  } : videoMeta
-
-  const playCatalogVideo = (video, index) => {
-    playerApiRef.current?.loadVideoById(video.id)
-    setVideoMeta((current) => ({
-      ...current,
-      ready: true,
-      error: '',
-      index,
-      total: catalog.length,
-      title: video.title,
-      videoId: video.id,
-    }))
-    onVideoChange(channel.id, video.id)
-  }
-
-  useEffect(() => {
     if (!videoMeta.videoId) return
     onVideoChange(channel.id, videoMeta.videoId)
   }, [channel.id, videoMeta.videoId, onVideoChange])
-
-  useEffect(() => {
-    if (!requestedStation || requestedStation.sourceId !== channel.id || !catalog.length) return
-    if (handledRequestRef.current === requestedStation.token) return
-    const requestedIndex = catalog.findIndex((video) => video.id === requestedStation.videoId)
-    if (requestedIndex < 0) return
-    handledRequestRef.current = requestedStation.token
-    playCatalogVideo(catalog[requestedIndex], requestedIndex)
-  }, [requestedStation, catalog, channel.id])
-
-  const stepVideo = (direction) => {
-    if (!catalog.length) {
-      direction > 0 ? playerApiRef.current?.nextVideo() : playerApiRef.current?.previousVideo()
-      return
-    }
-    const index = currentCatalogIndex >= 0 ? currentCatalogIndex : 0
-    const nextIndex = (index + direction + catalog.length) % catalog.length
-    playCatalogVideo(catalog[nextIndex], nextIndex)
-  }
 
   return (
     <section className="tv-column" id="watch" aria-label="Now playing">
@@ -423,30 +253,6 @@ function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuni
             <div className="cabinet-badge">B2TF<br /><small>SPORTS TV</small></div>
           </aside>
         </div>
-        <VideoLibraryDeck
-          channel={channel}
-          digitalNumber={digitalNumber}
-          videoMeta={displayMeta}
-          onPreviousVideo={() => stepVideo(-1)}
-          onNextVideo={() => stepVideo(1)}
-          onOpenLibrary={() => setLibraryOpen((open) => !open)}
-          libraryOpen={libraryOpen}
-          theater={theater}
-          onToggleTheater={onToggleTheater}
-          onFullscreen={onFullscreen}
-          isFavorite={isFavorite}
-          onFavorite={onFavorite}
-        />
-        {libraryOpen && (
-          <VideoLibraryDrawer
-            channel={channel}
-            videos={catalog}
-            status={catalogStatus}
-            currentVideoId={videoMeta.videoId}
-            onPlay={playCatalogVideo}
-            onClose={() => setLibraryOpen(false)}
-          />
-        )}
       </div>
     </section>
   )
@@ -491,10 +297,23 @@ function DigitalChannelRow({ station, selected, isFavorite, onSelect, onFavorite
   )
 }
 
-function ChannelGuide({ category, setCategory, query, setQuery, digitalChannels, digitalStatus, totalDigital, selectedKey, selectedDigitalNumber, favorites, onSelect, onFavorite, guideRef, favoritesOnly }) {
+function ChannelGuide({ category, setCategory, query, setQuery, sourceDirectory, sourceFilter, onSourceFilter, onQuickTune, digitalChannels, digitalStatus, totalDigital, selectedKey, selectedDigitalNumber, favorites, onSelect, onFavorite, guideRef, favoritesOnly }) {
   const [visibleCount, setVisibleCount] = useState(80)
+  const [quickNumber, setQuickNumber] = useState('')
+  const [quickError, setQuickError] = useState('')
 
   useEffect(() => setVisibleCount(80), [digitalChannels])
+
+  const submitQuickTune = (event) => {
+    event.preventDefault()
+    const stationNumber = Number.parseInt(quickNumber, 10)
+    if (!Number.isInteger(stationNumber) || !onQuickTune(stationNumber)) {
+      setQuickError(`Enter 1–${totalDigital.toLocaleString()}`)
+      return
+    }
+    setQuickNumber(String(stationNumber).padStart(5, '0'))
+    setQuickError('Tuning now')
+  }
 
   return (
     <aside className="guide-panel" id="guide" ref={guideRef}>
@@ -521,6 +340,42 @@ function ChannelGuide({ category, setCategory, query, setQuery, digitalChannels,
       <div className="digital-guide-band">
         <span><i /> DIGITAL SIGNAL</span>
         <strong>{totalDigital ? totalDigital.toLocaleString() : '—'} CHANNELS</strong>
+      </div>
+      <div className="station-finder">
+        <label className="source-directory">
+          <span><Radio size={13} /> SOURCE DIRECTORY</span>
+          <select
+            value={sourceFilter}
+            onChange={(event) => {
+              setQuickNumber('')
+              setQuickError('')
+              onSourceFilter(event.target.value)
+            }}
+            aria-label="Find channels by source bank"
+          >
+            <option value="">ALL {sourceDirectory.length} SOURCE BANKS</option>
+            {sourceDirectory.map(({ source, count, first, last }) => (
+              <option key={source.id} value={source.id}>
+                CH {source.number} · {source.name} · {count.toLocaleString()} DTV {first ? `${String(first).padStart(5, '0')}–${String(last).padStart(5, '0')}` : 'SCANNING'}
+              </option>
+            ))}
+          </select>
+        </label>
+        <form className="quick-tune" onSubmit={submitQuickTune}>
+          <label htmlFor="quick-dtv">QUICK TUNE</label>
+          <div>
+            <input
+              id="quick-dtv"
+              value={quickNumber}
+              onChange={(event) => { setQuickNumber(event.target.value.replace(/\D/g, '').slice(0, 5)); setQuickError('') }}
+              inputMode="numeric"
+              placeholder="00001"
+              aria-label="Enter a DTV channel number"
+            />
+            <button type="submit">TUNE</button>
+          </div>
+          <small aria-live="polite">{quickError || `1–${totalDigital.toLocaleString()}`}</small>
+        </form>
       </div>
       <label className="guide-search">
         <Search size={15} />
@@ -606,8 +461,8 @@ export default function App() {
   const [category, setCategory] = useState('All Sports')
   const [era, setEra] = useState('')
   const [query, setQuery] = useState('')
+  const [sourceFilter, setSourceFilter] = useState('')
   const [searching, setSearching] = useState(false)
-  const [theater, setTheater] = useState(false)
   const [tuning, setTuning] = useState(false)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [activeNav, setActiveNav] = useState('Watch')
@@ -630,6 +485,16 @@ export default function App() {
 
   const digitalByKey = useMemo(() => new Map(digitalCatalog.map((station) => [station.key, station])), [digitalCatalog])
   const activeDigitalStation = digitalByKey.get(selectedDigitalKey)
+  const sourceDirectory = useMemo(() => {
+    const directory = new Map(channels.map((source) => [source.id, { source, count: 0, first: null, last: null }]))
+    digitalCatalog.forEach((station) => {
+      const entry = directory.get(station.source.id)
+      entry.count += 1
+      entry.first ??= station.digitalNumber
+      entry.last = station.digitalNumber
+    })
+    return channels.map((source) => directory.get(source.id))
+  }, [digitalCatalog])
 
   const visibleDigitalChannels = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -640,9 +505,10 @@ export default function App() {
       const paddedNumber = String(station.digitalNumber).padStart(5, '0')
       const queryMatch = !normalizedQuery || `${station.digitalNumber} ${paddedNumber} ${station.title} ${source.name} ${source.fullName || ''} ${source.sport}`.toLowerCase().includes(normalizedQuery)
       const favoriteMatch = !favoritesOnly || favorites.includes(source.id)
-      return categoryMatch && eraMatch && queryMatch && favoriteMatch
+      const sourceMatch = !sourceFilter || source.id === sourceFilter
+      return categoryMatch && eraMatch && queryMatch && favoriteMatch && sourceMatch
     })
-  }, [digitalCatalog, category, era, query, favoritesOnly, favorites])
+  }, [digitalCatalog, category, era, query, sourceFilter, favoritesOnly, favorites])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -716,6 +582,28 @@ export default function App() {
     }, 380)
   }
 
+  const tuneDigitalNumber = (number) => {
+    const station = digitalCatalog[number - 1]
+    if (!station) return false
+    setSourceFilter('')
+    setCategory('All Sports')
+    setEra('')
+    setQuery('')
+    setFavoritesOnly(false)
+    tuneDigitalStation(station)
+    return true
+  }
+
+  const selectSourceFilter = (sourceId) => {
+    setSourceFilter(sourceId)
+    setCategory('All Sports')
+    setEra('')
+    setQuery('')
+    setFavoritesOnly(false)
+    const firstStation = digitalCatalog.find((station) => station.source.id === sourceId)
+    if (firstStation) tuneDigitalStation(firstStation)
+  }
+
   const stepDigitalChannel = (direction) => {
     if (!digitalCatalog.length) return
     const currentIndex = activeDigitalStation
@@ -739,17 +627,13 @@ export default function App() {
       setFavoritesOnly(true)
       setCategory('All Sports')
       setEra('')
+      setSourceFilter('')
       setTimeout(() => guideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
       return
     }
     setFavoritesOnly(false)
     const refs = { Watch: playerRef, Guide: guideRef, Archive: archiveRef }
     refs[label]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  const enterFullscreen = () => {
-    const node = playerRef.current?.querySelector('.crt-glass')
-    if (node?.requestFullscreen) node.requestFullscreen()
   }
 
   return (
@@ -764,7 +648,7 @@ export default function App() {
       />
 
       <main>
-        <div className={`broadcast-grid ${theater ? 'theater' : ''}`} ref={playerRef}>
+        <div className="broadcast-grid" ref={playerRef}>
           <div>
             <TVPlayer
               channel={selected}
@@ -772,15 +656,10 @@ export default function App() {
               digitalTotal={digitalCatalog.length}
               requestedStation={requestedStation}
               tuning={tuning}
-              theater={theater}
-              onToggleTheater={() => setTheater((value) => !value)}
-              onFullscreen={enterFullscreen}
               onStepSource={stepChannel}
               onStepDigital={stepDigitalChannel}
               onTune={selectChannel}
               onVideoChange={handleVideoChange}
-              isFavorite={favorites.includes(selected.id)}
-              onFavorite={() => toggleFavorite(selected.id)}
             />
             <div className="tuner-row">
               <EraTuner era={era} setEra={setEra} />
@@ -791,6 +670,10 @@ export default function App() {
             setCategory={setCategory}
             query={query}
             setQuery={setQuery}
+            sourceDirectory={sourceDirectory}
+            sourceFilter={sourceFilter}
+            onSourceFilter={selectSourceFilter}
+            onQuickTune={tuneDigitalNumber}
             digitalChannels={visibleDigitalChannels}
             digitalStatus={digitalStatus}
             totalDigital={digitalCatalog.length}
