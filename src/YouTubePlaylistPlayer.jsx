@@ -27,7 +27,7 @@ function loadYouTubeApi() {
   return youtubeApiPromise
 }
 
-export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerApiRef, onMetaChange }) {
+export default function YouTubePlaylistPlayer({ channel, initialVideoId, startSeconds = 0, muted = true, autoPlay = true, playerApiRef, onMetaChange, onEnded }) {
   const hostRef = useRef(null)
   const playFromUploadsPlaylist = initialVideoId === channel.videoId
 
@@ -76,6 +76,9 @@ export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerA
               list: getUploadsPlaylist(channel),
             } : {}),
             playsinline: 1,
+            autoplay: autoPlay ? 1 : 0,
+            mute: muted ? 1 : 0,
+            start: Math.max(0, Math.floor(startSeconds)),
             rel: 0,
             modestbranding: 1,
             cc_load_policy: 0,
@@ -84,10 +87,17 @@ export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerA
           events: {
             onReady: ({ target }) => {
               target.getIframe()?.setAttribute('title', `${channel.name} YouTube player`)
+              if (muted) target.mute?.()
+              else target.unMute?.()
+              if (startSeconds > 0) target.seekTo?.(startSeconds, true)
+              if (autoPlay) target.playVideo?.()
               publishMeta(target)
               refreshTimer = window.setTimeout(() => publishMeta(target), 900)
             },
-            onStateChange: ({ target }) => publishMeta(target),
+            onStateChange: ({ target, data }) => {
+              publishMeta(target)
+              if (data === YT.PlayerState.ENDED) onEnded?.()
+            },
             onError: ({ data }) => {
               onMetaChange((current) => ({
                 ...current,
@@ -103,6 +113,8 @@ export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerA
           previousVideo: () => player?.previousVideo?.(),
           playVideoAt: (index) => player?.playVideoAt?.(index),
           loadVideoById: (videoId) => player?.loadVideoById?.(videoId),
+          setMuted: (shouldMute) => shouldMute ? player?.mute?.() : player?.unMute?.(),
+          play: () => player?.playVideo?.(),
         }
       })
       .catch((error) => {
@@ -117,7 +129,7 @@ export default function YouTubePlaylistPlayer({ channel, initialVideoId, playerA
       playerApiRef.current = null
       player?.destroy?.()
     }
-  }, [channel, initialVideoId, onMetaChange, playerApiRef, playFromUploadsPlaylist])
+  }, [autoPlay, channel, initialVideoId, muted, onEnded, onMetaChange, playerApiRef, playFromUploadsPlaylist, startSeconds])
 
   return <div className="youtube-player"><div ref={hostRef} /></div>
 }

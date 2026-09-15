@@ -1,4 +1,4 @@
-export const categories = ['All Sports', 'Basketball', 'Football', 'Baseball', 'Boxing']
+export const categories = ['All Sports', 'Basketball', 'Football', 'Baseball', 'Hockey', 'Boxing']
 export const eras = ['70s', '80s', '90s', '00s']
 
 export const channels = [

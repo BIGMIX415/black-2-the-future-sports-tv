@@ -7,6 +7,7 @@ import {
   ChevronUp,
   CirclePlay,
   Clapperboard,
+  Clock,
   ExternalLink,
   Heart,
   ListVideo,
@@ -16,9 +17,12 @@ import {
   Sparkles,
   Star,
   Tv,
+  Volume2,
+  VolumeX,
   X,
 } from 'lucide-react'
 import { categories, channels, eras, getChannelUrl, getThumb } from './channels.js'
+import { buildLiveChannels, formatGuideClock, formatGuideTime, getLiveProgram, inferEventSport, LIVE_CHANNEL_COUNT, LIVE_SLOT_MS } from './liveTv.js'
 import YouTubePlaylistPlayer from './YouTubePlaylistPlayer.jsx'
 
 function FootballIcon({ size = 24, strokeWidth = 2, ...props }) {
@@ -61,8 +65,8 @@ function Navigation({ activeNav, onNavigate, className = '' }) {
     <nav className={`primary-nav ${className}`} aria-label={className === 'mobile-nav' ? 'Mobile navigation' : 'Primary navigation'}>
       {[
         ['Watch', Tv],
-        ['Guide', ListVideo],
-        ['Archive', Archive],
+        ['Live TV', Radio],
+        ['On Demand', Archive],
         ['My List', Heart],
       ].map(([label, Icon]) => (
         <button key={label} className={activeNav === label ? 'active' : ''} onClick={() => onNavigate(label)}>
@@ -201,8 +205,98 @@ function formatDuration(seconds) {
     : `${minutes}:${String(remainder).padStart(2, '0')}`
 }
 
-function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuning, onStepSource, onStepDigital, onTune, onVideoChange }) {
+const liveSports = ['All', 'Football', 'Basketball', 'Baseball', 'Hockey', 'Boxing', 'College', 'Championships']
+
+function LiveChannelRow({ program, selected, onSelect }) {
+  const { channel, current, next, slotEnd } = program
+  const Icon = sportIcons[channel.sport] || Radio
+  return (
+    <button className={`live-channel-row ${selected ? 'selected' : ''}`} onClick={() => onSelect(channel)}>
+      <span className="live-channel-number">{String(channel.number).padStart(4, '0')}</span>
+      <span className="live-channel-mark"><Icon size={16} strokeWidth={1.5} /></span>
+      <span className="live-channel-copy">
+        <strong>{channel.name}</strong>
+        <small><b>NOW</b> {current.title}</small>
+      </span>
+      <span className="live-next-program">
+        <small>{formatGuideTime(slotEnd)}</small>
+        <strong>{next.title}</strong>
+      </span>
+    </button>
+  )
+}
+
+function LiveTVGuide({ programs, selectedNumber, now, onSelect, liveGuideRef }) {
+  const [sport, setSport] = useState('All')
+  const [query, setQuery] = useState('')
+  const [visibleCount, setVisibleCount] = useState(80)
+  const [quickNumber, setQuickNumber] = useState('')
+
+  const filteredPrograms = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return programs.filter((program) => {
+      const sportMatch = sport === 'All' || program.channel.sport === sport
+      const searchMatch = !needle || `${program.channel.number} ${program.channel.name} ${program.current.title} ${program.next.title}`.toLowerCase().includes(needle)
+      return sportMatch && searchMatch
+    })
+  }, [programs, query, sport])
+
+  useEffect(() => setVisibleCount(80), [sport, query])
+
+  const quickTune = (event) => {
+    event.preventDefault()
+    const channelNumber = Number.parseInt(quickNumber, 10)
+    const program = programs[channelNumber - 1]
+    if (!program) return
+    onSelect(program.channel)
+    setQuickNumber(String(channelNumber).padStart(4, '0'))
+  }
+
+  return (
+    <aside className="guide-panel live-guide-panel" id="live-tv" ref={liveGuideRef}>
+      <div className="guide-heading live-guide-heading">
+        <div>
+          <h2>LIVE TV GUIDE</h2>
+          <p>1,500 programmed sports channels · always on</p>
+        </div>
+        <div className="guide-clock" aria-label="Current local time"><Clock size={16} /><strong>{formatGuideClock(now)}</strong></div>
+      </div>
+      <div className="sport-tabs live-sport-tabs" role="tablist" aria-label="Filter live channels by sport">
+        {liveSports.map((item) => (
+          <button key={item} role="tab" aria-selected={sport === item} className={sport === item ? 'active' : ''} onClick={() => setSport(item)}>{item}</button>
+        ))}
+      </div>
+      <div className="digital-guide-band live-band">
+        <span><i /> LIVE SIGNAL</span>
+        <strong>{LIVE_CHANNEL_COUNT.toLocaleString()} CHANNELS ON AIR</strong>
+      </div>
+      <div className="live-guide-tools">
+        <label className="guide-search live-search">
+          <Search size={15} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Channel, event, team…" aria-label="Search live TV guide" />
+          {query && <button onClick={() => setQuery('')} aria-label="Clear live TV search"><X size={14} /></button>}
+        </label>
+        <form className="live-quick-tune" onSubmit={quickTune}>
+          <label htmlFor="live-channel-number">LIVE QUICK TUNE</label>
+          <div><input id="live-channel-number" value={quickNumber} onChange={(event) => setQuickNumber(event.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="0001" inputMode="numeric" aria-label="Enter a live channel number" /><button>TUNE</button></div>
+        </form>
+      </div>
+      <div className="live-grid-labels"><span>CHANNEL / NOW</span><span>NEXT</span></div>
+      <div className="channel-list live-channel-list">
+        {filteredPrograms.slice(0, visibleCount).map((program) => <LiveChannelRow key={program.channel.id} program={program} selected={program.channel.number === selectedNumber} onSelect={onSelect} />)}
+        {visibleCount < filteredPrograms.length && <button className="guide-load-more" onClick={() => setVisibleCount((count) => count + 80)}>SHOW 80 MORE · {(filteredPrograms.length - visibleCount).toLocaleString()} CHANNELS REMAINING</button>}
+      </div>
+      <div className="guide-footer live-guide-footer">
+        <div><small>ON AIR</small><span>LIVE {String(selectedNumber).padStart(4, '0')}</span></div>
+        <div><small>LOCAL TIME</small><span>{formatGuideClock(now)}</span></div>
+      </div>
+    </aside>
+  )
+}
+
+function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuning, onStepSource, onStepDigital, onTune, onVideoChange, onProgramEnded }) {
   const playerApiRef = useRef(null)
+  const [soundOn, setSoundOn] = useState(false)
   const requestedVideoId = requestedStation?.sourceId === channel.id
     ? requestedStation.videoId
     : channel.videoId
@@ -228,11 +322,15 @@ function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuni
           <div className="tv-screen-frame">
             <div className="crt-glass">
               <YouTubePlaylistPlayer
-                key={`${channel.id}:${requestedVideoId}`}
+                key={`${channel.id}:${requestedVideoId}:${requestedStation?.scheduleKey || 'ondemand'}`}
                 channel={channel}
                 initialVideoId={requestedVideoId}
+                startSeconds={requestedStation?.startSeconds || 0}
+                autoPlay
+                muted={!soundOn}
                 playerApiRef={playerApiRef}
                 onMetaChange={setVideoMeta}
+                onEnded={onProgramEnded}
               />
               <div className="scanlines" aria-hidden="true" />
               <div className={`tuning-static ${tuning ? 'active' : ''}`} aria-hidden="true" />
@@ -252,6 +350,16 @@ function TVPlayer({ channel, digitalNumber, digitalTotal, requestedStation, tuni
             <div className="speaker-slats">{Array.from({ length: 7 }, (_, index) => <i key={index} />)}</div>
             <div className="cabinet-badge">B2TF<br /><small>SPORTS TV</small></div>
           </aside>
+        </div>
+        <div className="autoplay-strip">
+          <span><i /> LIVE AUTOPLAY</span>
+          <span>Joined in progress · 24/7 programmed stream</span>
+          <button onClick={() => {
+            const nextSound = !soundOn
+            setSoundOn(nextSound)
+            playerApiRef.current?.setMuted?.(!nextSound)
+            playerApiRef.current?.play?.()
+          }}>{soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}{soundOn ? 'SOUND ON' : 'AUTOPLAY MUTED · ENABLE SOUND'}</button>
         </div>
       </div>
     </section>
@@ -274,7 +382,8 @@ function EraTuner({ era, setEra }) {
 }
 
 function DigitalChannelRow({ station, selected, isFavorite, onSelect, onFavorite }) {
-  const Icon = sportIcons[station.source.sport] || Radio
+  const stationSport = station.sport || station.source.sport
+  const Icon = sportIcons[stationSport] || Radio
   return (
     <div className={`channel-row ${selected ? 'selected' : ''}`}>
       <button className="channel-main digital-channel-main" onClick={() => onSelect(station)}>
@@ -282,7 +391,7 @@ function DigitalChannelRow({ station, selected, isFavorite, onSelect, onFavorite
         <span className="sport-mark"><Icon size={17} strokeWidth={1.5} /></span>
         <span className="channel-copy">
           <strong>{station.title}</strong>
-          <small>{selected ? 'NOW PLAYING' : `${station.source.name} · ${station.source.era} · ${station.source.sport}`}</small>
+          <small>{selected ? 'NOW PLAYING' : `${station.source.name} · ${station.source.era} · ${stationSport}`}</small>
         </span>
         <span className="air-time digital-runtime">{formatDuration(station.duration)}</span>
       </button>
@@ -297,7 +406,7 @@ function DigitalChannelRow({ station, selected, isFavorite, onSelect, onFavorite
   )
 }
 
-function ChannelGuide({ category, setCategory, query, setQuery, sourceDirectory, sourceFilter, onSourceFilter, onQuickTune, digitalChannels, digitalStatus, totalDigital, selectedKey, selectedDigitalNumber, favorites, onSelect, onFavorite, guideRef, favoritesOnly }) {
+function ChannelGuide({ category, setCategory, query, setQuery, sourceDirectory, sourceFilter, onSourceFilter, onQuickTune, digitalChannels, digitalStatus, totalDigital, selectedKey, selectedDigitalNumber, favorites, onSelect, onFavorite, favoritesOnly }) {
   const [visibleCount, setVisibleCount] = useState(80)
   const [quickNumber, setQuickNumber] = useState('')
   const [quickError, setQuickError] = useState('')
@@ -316,11 +425,11 @@ function ChannelGuide({ category, setCategory, query, setQuery, sourceDirectory,
   }
 
   return (
-    <aside className="guide-panel" id="guide" ref={guideRef}>
+    <aside className="guide-panel on-demand-guide" id="on-demand-guide">
       <div className="guide-heading">
         <div>
-          <h2>{favoritesOnly ? 'MY DIGITAL LIST' : 'DIGITAL CHANNEL GUIDE'}</h2>
-          <p>{digitalStatus === 'loading' ? 'Scanning every source bank…' : `${digitalChannels.length.toLocaleString()} of ${totalDigital.toLocaleString()} digital channels`}</p>
+          <h2>{favoritesOnly ? 'MY SPORTS LIST' : 'SPORTS ON DEMAND'}</h2>
+          <p>{digitalStatus === 'loading' ? 'Scanning every source bank…' : `Pick any event anytime · ${digitalChannels.length.toLocaleString()} of ${totalDigital.toLocaleString()} events`}</p>
         </div>
         <SlidersHorizontal size={20} />
       </div>
@@ -338,8 +447,8 @@ function ChannelGuide({ category, setCategory, query, setQuery, sourceDirectory,
         ))}
       </div>
       <div className="digital-guide-band">
-        <span><i /> DIGITAL SIGNAL</span>
-        <strong>{totalDigital ? totalDigital.toLocaleString() : '—'} CHANNELS</strong>
+        <span><i /> ON-DEMAND LIBRARY</span>
+        <strong>{totalDigital ? totalDigital.toLocaleString() : '—'} EVENTS</strong>
       </div>
       <div className="station-finder">
         <label className="source-directory">
@@ -382,8 +491,8 @@ function ChannelGuide({ category, setCategory, query, setQuery, sourceDirectory,
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Channel #, game, team, or creator…"
-          aria-label="Search the digital channel guide"
+            placeholder="Event #, game, team, sport, or creator…"
+            aria-label="Search sports on demand"
         />
         {query && <button onClick={() => setQuery('')} aria-label="Clear digital channel search"><X size={14} /></button>}
       </label>
@@ -411,8 +520,8 @@ function ChannelGuide({ category, setCategory, query, setQuery, sourceDirectory,
         )}
       </div>
       <div className="guide-footer">
-        <div><small>ON AIR</small><span>{selectedKey && selectedDigitalNumber ? `DTV ${String(selectedDigitalNumber).padStart(5, '0')}` : 'Digital archive'}</span></div>
-        <div><small>FULL LINEUP</small><span>{totalDigital.toLocaleString()} digital channels</span></div>
+        <div><small>NOW PLAYING</small><span>{selectedKey && selectedDigitalNumber ? `EVENT ${String(selectedDigitalNumber).padStart(5, '0')}` : 'Sports archive'}</span></div>
+        <div><small>FULL LIBRARY</small><span>{totalDigital.toLocaleString()} events on demand</span></div>
       </div>
     </aside>
   )
@@ -455,6 +564,8 @@ function ArchiveRail({ channels: railChannels, selectedId, onSelect, archiveRef 
 export default function App() {
   const [selectedId, setSelectedId] = useState('mdbball')
   const [selectedDigitalKey, setSelectedDigitalKey] = useState('mdbball:o5lWDUeyatI')
+  const [selectedLiveNumber, setSelectedLiveNumber] = useState(1)
+  const [clock, setClock] = useState(() => Date.now())
   const [requestedStation, setRequestedStation] = useState(null)
   const [digitalCatalog, setDigitalCatalog] = useState([])
   const [digitalStatus, setDigitalStatus] = useState('loading')
@@ -470,21 +581,20 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('b2tf-favorites')) || [] } catch { return [] }
   })
   const playerRef = useRef(null)
-  const guideRef = useRef(null)
-  const archiveRef = useRef(null)
+  const liveGuideRef = useRef(null)
+  const onDemandRef = useRef(null)
   const switchTimer = useRef(null)
+  const liveStarted = useRef(false)
 
   const selected = channels.find((channel) => channel.id === selectedId) || channels[0]
-  const visibleSources = useMemo(() => channels.filter((channel) => {
-    const categoryMatch = category === 'All Sports' || channel.sport === category
-    const eraMatch = !era || channel.era === era
-    const queryMatch = !query || `${channel.name} ${channel.fullName || ''} ${channel.title} ${channel.sport}`.toLowerCase().includes(query.toLowerCase())
-    const favoriteMatch = !favoritesOnly || favorites.includes(channel.id)
-    return categoryMatch && eraMatch && queryMatch && favoriteMatch
-  }), [category, era, query, favoritesOnly, favorites])
-
   const digitalByKey = useMemo(() => new Map(digitalCatalog.map((station) => [station.key, station])), [digitalCatalog])
   const activeDigitalStation = digitalByKey.get(selectedDigitalKey)
+  const liveChannels = useMemo(() => buildLiveChannels(digitalCatalog), [digitalCatalog])
+  const liveSlot = Math.floor(clock / LIVE_SLOT_MS)
+  const livePrograms = useMemo(() => {
+    const scheduleMoment = liveSlot * LIVE_SLOT_MS + 1000
+    return liveChannels.map((channel) => getLiveProgram(channel, scheduleMoment))
+  }, [liveChannels, liveSlot])
   const sourceDirectory = useMemo(() => {
     const directory = new Map(channels.map((source) => [source.id, { source, count: 0, first: null, last: null }]))
     digitalCatalog.forEach((station) => {
@@ -500,10 +610,10 @@ export default function App() {
     const normalizedQuery = query.trim().toLowerCase()
     return digitalCatalog.filter((station) => {
       const { source } = station
-      const categoryMatch = category === 'All Sports' || source.sport === category
+      const categoryMatch = category === 'All Sports' || station.sport === category
       const eraMatch = !era || source.era === era
       const paddedNumber = String(station.digitalNumber).padStart(5, '0')
-      const queryMatch = !normalizedQuery || `${station.digitalNumber} ${paddedNumber} ${station.title} ${source.name} ${source.fullName || ''} ${source.sport}`.toLowerCase().includes(normalizedQuery)
+      const queryMatch = !normalizedQuery || `${station.digitalNumber} ${paddedNumber} ${station.title} ${source.name} ${source.fullName || ''} ${station.sport} ${source.sport}`.toLowerCase().includes(normalizedQuery)
       const favoriteMatch = !favoritesOnly || favorites.includes(source.id)
       const sourceMatch = !sourceFilter || source.id === sourceFilter
       return categoryMatch && eraMatch && queryMatch && favoriteMatch && sourceMatch
@@ -527,6 +637,7 @@ export default function App() {
         const stations = sourceCatalogs.flatMap(({ source, videos }) => videos.map((video) => ({
           ...video,
           source,
+          sport: inferEventSport(video.title, source.sport),
           key: `${source.id}:${video.id}`,
           digitalNumber: ++digitalNumber,
         })))
@@ -543,6 +654,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('b2tf-favorites', JSON.stringify(favorites))
   }, [favorites])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => () => clearTimeout(switchTimer.current), [])
 
@@ -604,18 +720,61 @@ export default function App() {
     if (firstStation) tuneDigitalStation(firstStation)
   }
 
-  const stepDigitalChannel = (direction) => {
-    if (!digitalCatalog.length) return
-    const currentIndex = activeDigitalStation
-      ? activeDigitalStation.digitalNumber - 1
-      : Math.max(0, digitalCatalog.findIndex((station) => station.source.id === selectedId))
-    const nextIndex = (currentIndex + direction + digitalCatalog.length) % digitalCatalog.length
-    tuneDigitalStation(digitalCatalog[nextIndex])
+  const tuneLiveChannel = (liveChannel, shouldScroll = true) => {
+    const program = getLiveProgram(liveChannel, Date.now())
+    if (!program) return
+    clearTimeout(switchTimer.current)
+    setTuning(true)
+    switchTimer.current = setTimeout(() => {
+      setSelectedLiveNumber(liveChannel.number)
+      setSelectedId(program.current.source.id)
+      setSelectedDigitalKey(program.current.key)
+      setRequestedStation({
+        sourceId: program.current.source.id,
+        videoId: program.current.id,
+        startSeconds: program.startSeconds,
+        scheduleKey: program.key,
+        token: `${program.key}:${Date.now()}`,
+      })
+      setTuning(false)
+      if (shouldScroll) document.getElementById('watch')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, liveStarted.current ? 380 : 0)
+    liveStarted.current = true
+  }
+
+  const stepLiveChannel = (direction) => {
+    if (!liveChannels.length) return
+    const nextIndex = (selectedLiveNumber - 1 + direction + liveChannels.length) % liveChannels.length
+    tuneLiveChannel(liveChannels[nextIndex])
   }
 
   const handleVideoChange = React.useCallback((sourceId, videoId) => {
     setSelectedDigitalKey(`${sourceId}:${videoId}`)
   }, [])
+
+  const handleProgramEnded = React.useCallback(() => {
+    const liveChannel = liveChannels[selectedLiveNumber - 1]
+    const program = getLiveProgram(liveChannel, Date.now())
+    if (!program?.next) return
+    setSelectedId(program.next.source.id)
+    setSelectedDigitalKey(program.next.key)
+    setRequestedStation({
+      sourceId: program.next.source.id,
+      videoId: program.next.id,
+      startSeconds: 0,
+      scheduleKey: `${program.key}:next`,
+      token: `${program.next.key}:${Date.now()}`,
+    })
+  }, [liveChannels, selectedLiveNumber])
+
+  useEffect(() => {
+    if (!liveChannels.length) return
+    const currentChannel = liveChannels[selectedLiveNumber - 1] || liveChannels[0]
+    const scheduled = getLiveProgram(currentChannel, Date.now())
+    if (!liveStarted.current || requestedStation?.scheduleKey?.split(':next')[0] !== scheduled?.key) {
+      tuneLiveChannel(currentChannel, false)
+    }
+  }, [liveChannels, liveSlot])
 
   const toggleFavorite = (id) => {
     setFavorites((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
@@ -628,11 +787,11 @@ export default function App() {
       setCategory('All Sports')
       setEra('')
       setSourceFilter('')
-      setTimeout(() => guideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+      setTimeout(() => onDemandRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
       return
     }
     setFavoritesOnly(false)
-    const refs = { Watch: playerRef, Guide: guideRef, Archive: archiveRef }
+    const refs = { Watch: playerRef, 'Live TV': liveGuideRef, 'On Demand': onDemandRef }
     refs[label]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -652,42 +811,44 @@ export default function App() {
           <div>
             <TVPlayer
               channel={selected}
-              digitalNumber={activeDigitalStation?.digitalNumber}
-              digitalTotal={digitalCatalog.length}
+              digitalNumber={selectedLiveNumber}
+              digitalTotal={LIVE_CHANNEL_COUNT}
               requestedStation={requestedStation}
               tuning={tuning}
               onStepSource={stepChannel}
-              onStepDigital={stepDigitalChannel}
+              onStepDigital={stepLiveChannel}
               onTune={selectChannel}
               onVideoChange={handleVideoChange}
+              onProgramEnded={handleProgramEnded}
             />
             <div className="tuner-row">
               <EraTuner era={era} setEra={setEra} />
             </div>
           </div>
-          <ChannelGuide
-            category={category}
-            setCategory={setCategory}
-            query={query}
-            setQuery={setQuery}
-            sourceDirectory={sourceDirectory}
-            sourceFilter={sourceFilter}
-            onSourceFilter={selectSourceFilter}
-            onQuickTune={tuneDigitalNumber}
-            digitalChannels={visibleDigitalChannels}
-            digitalStatus={digitalStatus}
-            totalDigital={digitalCatalog.length}
-            selectedKey={selectedDigitalKey}
-            selectedDigitalNumber={activeDigitalStation?.digitalNumber}
-            favorites={favorites}
-            onSelect={tuneDigitalStation}
-            onFavorite={toggleFavorite}
-            guideRef={guideRef}
-            favoritesOnly={favoritesOnly}
-          />
+          <LiveTVGuide programs={livePrograms} selectedNumber={selectedLiveNumber} now={clock} onSelect={tuneLiveChannel} liveGuideRef={liveGuideRef} />
         </div>
 
-        <ArchiveRail channels={visibleSources.length ? visibleSources : channels} selectedId={selectedId} onSelect={selectChannel} archiveRef={archiveRef} />
+        <section className="on-demand-section" id="on-demand" ref={onDemandRef}>
+          <ChannelGuide
+              category={category}
+              setCategory={setCategory}
+              query={query}
+              setQuery={setQuery}
+              sourceDirectory={sourceDirectory}
+              sourceFilter={sourceFilter}
+              onSourceFilter={selectSourceFilter}
+              onQuickTune={tuneDigitalNumber}
+              digitalChannels={visibleDigitalChannels}
+              digitalStatus={digitalStatus}
+              totalDigital={digitalCatalog.length}
+              selectedKey={selectedDigitalKey}
+              selectedDigitalNumber={activeDigitalStation?.digitalNumber}
+              favorites={favorites}
+              onSelect={tuneDigitalStation}
+              onFavorite={toggleFavorite}
+              favoritesOnly={favoritesOnly}
+          />
+        </section>
 
         <section className="mission-strip">
           <Clapperboard size={28} />
