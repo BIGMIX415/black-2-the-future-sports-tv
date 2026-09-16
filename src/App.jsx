@@ -25,6 +25,8 @@ import { categories, channels, eras, getChannelUrl, getThumb } from './channels.
 import { buildLiveChannels, formatGuideClock, formatGuideTime, getLiveProgram, inferEventSport, LIVE_CHANNEL_COUNT, LIVE_SLOT_MS } from './liveTv.js'
 import YouTubePlaylistPlayer from './YouTubePlaylistPlayer.jsx'
 
+const CATALOG_RELEASE = '2026-09-16-21499'
+
 function FootballIcon({ size = 24, strokeWidth = 2, ...props }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
@@ -625,7 +627,7 @@ export default function App() {
     setDigitalStatus('loading')
 
     Promise.all(channels.map((source) => (
-      fetch(`${import.meta.env.BASE_URL}catalog/${source.id}.json`, { signal: controller.signal })
+      fetch(`${import.meta.env.BASE_URL}catalog/${source.id}.json?v=${CATALOG_RELEASE}`, { signal: controller.signal })
         .then((response) => {
           if (!response.ok) throw new Error(`Catalog request failed with ${response.status}`)
           return response.json()
