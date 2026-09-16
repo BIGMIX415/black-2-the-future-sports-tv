@@ -246,6 +246,18 @@ export const channels = [
     title: '2024 NCAA Hockey Frozen Four Final — Boston College vs Denver',
     blurb: 'Full NCAA hockey and college-football broadcasts from modern tournaments to vintage classics.',
   },
+  {
+    id: 'steve-kresminski',
+    number: 43,
+    name: 'Pro Football Daily — Steve Kresminski',
+    fullName: 'Pro Football Daily (@SteveKresminski)',
+    sport: 'Football',
+    era: '80s',
+    channelId: 'UCbZTUn3VYSX8Jbvz2S47Omw',
+    videoId: 'qjNwkpf2D_M',
+    title: 'The OT NFL on Fox Postgame — December 3, 2006',
+    blurb: 'Full vintage NFL games, studio shows, halftime reports, commercials, and classic football television.',
+  },
 ]
 
 export const getChannelUrl = (channel) => `https://www.youtube.com/channel/${channel.channelId}`
