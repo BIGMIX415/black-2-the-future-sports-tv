@@ -25,7 +25,7 @@ import { categories, channels, eras, getChannelUrl, getThumb } from './channels.
 import { buildLiveChannels, formatGuideClock, formatGuideTime, getLiveProgram, inferEventSport, LIVE_CHANNEL_COUNT, LIVE_SLOT_MS } from './liveTv.js'
 import YouTubePlaylistPlayer from './YouTubePlaylistPlayer.jsx'
 
-const CATALOG_RELEASE = '2026-09-16-21499'
+const CATALOG_RELEASE = '2026-09-27-30652'
 
 function FootballIcon({ size = 24, strokeWidth = 2, ...props }) {
   return (

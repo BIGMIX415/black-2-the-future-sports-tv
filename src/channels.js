@@ -258,6 +258,18 @@ export const channels = [
     title: 'The OT NFL on Fox Postgame — December 3, 2006',
     blurb: 'Full vintage NFL games, studio shows, halftime reports, commercials, and classic football television.',
   },
+  {
+    id: 'sw561',
+    number: 44,
+    name: 'SW561',
+    fullName: 'SW561 (@561forthewin)',
+    sport: 'All Sports',
+    era: '90s',
+    channelId: 'UCwbDbwZVwhpet_ZoAeH1MZw',
+    videoId: 'kHCiX19vIGU',
+    title: '1994 NBA Highlights — March 24–28',
+    blurb: 'NFL, MLB, NBA, college sports, SportsCenter lists, championships, rivalries, and classic highlight reels.',
+  },
 ]
 
 export const getChannelUrl = (channel) => `https://www.youtube.com/channel/${channel.channelId}`
